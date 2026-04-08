@@ -389,7 +389,7 @@ public class AssemblyBlockEntity extends SmartBlockEntity implements IHaveTemper
     }
 
     private void temperatureChange(double Q) {
-        float coEf = 0.75f * 1e4f; // Change this for how much you want the temperature increase to slow down
+        float coEf = 0.5f * 1e4f; // Change this for how much you want the temperature increase to slow down
         temperature += (float) Q / (C * coEf);
     }
 
