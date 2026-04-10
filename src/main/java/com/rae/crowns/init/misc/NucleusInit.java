@@ -151,7 +151,7 @@ public class NucleusInit {
             new Nucleus.NuclearEquation(Map.of(1002, 1f), 0, 0f), 1692f);
 
     @NotNull public static Nucleus Np239 = new Nucleus(1002, 239, 93,
-            new Nucleus.NuclearEquation(Map.of(239, 1f), 0, 0f), Day);
+            new Nucleus.NuclearEquation(Map.of(239, 1f), 0, 0f), 2000f);
 
     @NotNull public static Nucleus Am241Be = new Nucleus(241, 241, 95, new Nucleus.NuclearEquation(Map.of(237, 1f), 10f, 8.88e-13f), 100f * Day); // Exagerated for noticable effect
 
