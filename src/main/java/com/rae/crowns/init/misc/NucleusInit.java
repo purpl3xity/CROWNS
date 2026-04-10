@@ -109,7 +109,7 @@ public class NucleusInit {
                     20.07f * 1e12f
             ),
             new Nucleus.NuclearEquation(Map.of(235, 1f), 0f, 0f),
-            100f * Day
+            300f * Day
     );
 
     // Np237, similar to U235 and Pu239
@@ -143,7 +143,7 @@ public class NucleusInit {
     @NotNull public static Nucleus U236 = new Nucleus(236, 92,
             new Nucleus.NuclearEquation(Map.of(92, 1f, 141, 1f), 3, 0f), 1);
 
-    @NotNull public static Nucleus U238 = new Nucleus(238, 92, Couple.create(108f, 2.7f),
+    @NotNull public static Nucleus U238 = new Nucleus(238, 92, Couple.create(148f, 2.7f), // Larping the resonance integral
             new Nucleus.NuclearEquation(Map.of(1001, 0.1f), 0, 0f),
             new Nucleus.NuclearEquation(Map.of(234, 1f), 0, 0f), 1000f * Day);
 
