@@ -21,18 +21,19 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.jetbrains.annotations.NotNull;
+import org.lwjgl.system.NonnullDefault;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+@NonnullDefault
 public class TurbineStageBlockEntity extends GeneratingKineticBlockEntity implements ISteamPressureChange {
-    public int initialTicks;
+    public    int                initialTicks;
     //the turbine add itself to the SteamCurrent
-    protected @NotNull List<SteamCurrent> flows = List.of();
-    @NotNull LerpedFloat power = LerpedFloat.linear();
-    int index;
+    protected List<SteamCurrent> flows = List.of();
+    LerpedFloat power = LerpedFloat.linear();
+    int         index;
 
     public TurbineStageBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -54,14 +55,14 @@ public class TurbineStageBlockEntity extends GeneratingKineticBlockEntity implem
     }
 
     @Override
-    protected void write(@NotNull CompoundTag compound, boolean clientPacket) {
+    protected void write(CompoundTag compound, boolean clientPacket) {
         compound.putFloat("power", power.getValue());
         compound.putInt("index", index);
         super.write(compound, clientPacket);
     }
 
     @Override
-    protected void read(@NotNull CompoundTag compound, boolean clientPacket) {
+    protected void read(CompoundTag compound, boolean clientPacket) {
         super.read(compound, clientPacket);
         power.setValue(compound.getFloat("power"));
         index = compound.getInt("index");
@@ -79,7 +80,6 @@ public class TurbineStageBlockEntity extends GeneratingKineticBlockEntity implem
         return true;
     }
 
-    @SuppressWarnings("RedundantMethodOverride")
     @Override
     public void addBehaviours(List<BlockEntityBehaviour> behaviours) {
 
@@ -112,7 +112,7 @@ public class TurbineStageBlockEntity extends GeneratingKineticBlockEntity implem
     }
 
     @Override
-    public boolean addToGoggleTooltip(@NotNull List<Component> tooltip, boolean isPlayerSneaking) {
+    public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
         super.addToGoggleTooltip(tooltip, isPlayerSneaking);
         CreateLang.builder().add(Component.literal("stage number " + index))
                 .style(ChatFormatting.DARK_RED)

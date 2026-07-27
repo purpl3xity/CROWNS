@@ -7,26 +7,26 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
-import org.jetbrains.annotations.NotNull;
+import org.lwjgl.system.NonnullDefault;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@NonnullDefault
 public class SteamFlowData extends SavedData {
-    //static Codec<Map<ResourceLocation,List<SteamCurrent>>> CODEC = Codec.unboundedMap(ResourceLocation.CODEC,Codec.list(SteamCurrent.CODEC));
     static final Codec<List<ResourceLocation>> KEYS_CODEC = Codec.list(ResourceLocation.CODEC);
     Map<ResourceLocation, List<SteamCurrent>> steamCurrents = new HashMap<>();
 
-    public static @NotNull SteamFlowData loadData(@NotNull MinecraftServer server) {
+    public static SteamFlowData loadData(MinecraftServer server) {
         return server.overworld()
                 .getDataStorage()
                 .computeIfAbsent(SteamFlowData::load, SteamFlowData::new, "steam_currents");
     }
 
-    public static @NotNull SteamFlowData load(@NotNull CompoundTag nbt) {
-        SteamFlowData savedData = new SteamFlowData();
+    public static SteamFlowData load(CompoundTag nbt) {
+        SteamFlowData          savedData     = new SteamFlowData();
         List<ResourceLocation> dimensionKeys = KEYS_CODEC.parse(NbtOps.INSTANCE, nbt.get("dimensions")).result().orElse(List.of());
 
         for (ResourceLocation key : dimensionKeys) {
@@ -37,13 +37,12 @@ public class SteamFlowData extends SavedData {
                 savedData.steamCurrents.get(key).add(SteamCurrent.fromNBT((CompoundTag) dimensionTag));
             });
         }
-        /*savedData.steamCurrents = new HashMap<>(CODEC.parse(NbtOps.INSTANCE, nbt.get("currents"))
-                .result().orElse(new HashMap<>()));*/
+
         return savedData;
     }
 
     @Override
-    public @NotNull CompoundTag save(@NotNull CompoundTag nbt) {
+    public CompoundTag save(CompoundTag nbt) {
         nbt.put("dimensions", KEYS_CODEC.encodeStart(NbtOps.INSTANCE, steamCurrents.keySet().stream().toList()).result().orElse(new CompoundTag()));
         for (Map.Entry<ResourceLocation, List<SteamCurrent>> entry : steamCurrents.entrySet()) {
 

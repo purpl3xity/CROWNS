@@ -1,7 +1,7 @@
 package com.rae.crowns.mixin;
 
 import com.rae.formicapi.content.thermal_utilities.FullTableBased;
-import com.rae.formicapi.content.thermal_utilities.SpecificRealGazState;
+import com.rae.formicapi.content.thermal_utilities.SpecificRealGasState;
 import com.simibubi.create.content.fluids.FluidReactions;
 import com.simibubi.create.content.fluids.FluidTransportBehaviour;
 import com.simibubi.create.content.fluids.PipeConnection;
@@ -44,9 +44,9 @@ public abstract class FluidTransportBehaviourMixin extends BlockEntityBehaviour 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true, remap = false)
     public void replaceTick(@NotNull CallbackInfo ci) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         super.tick();
-        Level world = getWorld();
-        BlockPos pos = getPos();
-        boolean onServer = !world.isClientSide || blockEntity.isVirtual();
+        Level    world    = getWorld();
+        BlockPos pos      = getPos();
+        boolean  onServer = !world.isClientSide || blockEntity.isVirtual();
 
         if (interfaces == null)
             return;
@@ -54,13 +54,6 @@ public abstract class FluidTransportBehaviourMixin extends BlockEntityBehaviour 
 
         // Do not provide a lone pipe connection with its own flow input
         PipeConnection singleSource = null;
-
-//		if (onClient) {
-//			connections.forEach(connection -> {
-//				connection.visualizeFlow(pos);
-//				connection.visualizePressure(pos);
-//			});
-//		}
 
         if (phase == FluidTransportBehaviour.UpdatePhase.WAIT_FOR_PUMPS) {
             phase = FluidTransportBehaviour.UpdatePhase.FLIP_FLOWS;
@@ -109,19 +102,19 @@ public abstract class FluidTransportBehaviourMixin extends BlockEntityBehaviour 
                     //modified part
                     singleSource = null;
                     CompoundTag inFlowTag = fluidInFlow.getTag();
-                    SpecificRealGazState inFlowState = FullTableBased.DEFAULT_STATE;
+                    SpecificRealGasState inFlowState = SpecificRealGasState.DEFAULT_STATE;
                     if (inFlowTag != null && inFlowTag.contains("realGazState")) {
-                        inFlowState = new SpecificRealGazState((CompoundTag) inFlowTag.get("realGazState"));
+                        inFlowState = new SpecificRealGasState((CompoundTag) inFlowTag.get("realGazState"));
                     }
                     CompoundTag availableTag = availableFlow.getTag();
-                    SpecificRealGazState availableState = FullTableBased.DEFAULT_STATE;
+                    SpecificRealGasState availableState = SpecificRealGasState.DEFAULT_STATE;
                     if (availableTag != null && availableTag.contains("realGazState")) {
-                        availableState = new SpecificRealGazState((CompoundTag) availableTag.get("realGazState"));
+                        availableState = new SpecificRealGasState((CompoundTag) availableTag.get("realGazState"));
                     } else {
                         availableTag = new CompoundTag();
                     }
 
-                    SpecificRealGazState mixedState = FullTableBased.mix(availableState, availableFlow.getAmount(),
+                    SpecificRealGasState mixedState = FullTableBased.mix(availableState, availableFlow.getAmount(),
                             inFlowState, fluidInFlow.getAmount());
 
                     availableFlow = fluidInFlow;

@@ -2,6 +2,7 @@ package com.rae.crowns.content.nuclear.fuel_assembly;
 
 import com.rae.crowns.CROWNSLang;
 import com.rae.crowns.config.CROWNSConfigs;
+import com.rae.crowns.content.event.ServerEvents;
 import com.rae.crowns.content.fields.util.PhysicsSaveManager;
 import com.rae.crowns.content.fields.util.PhysicsWorldData;
 import com.rae.crowns.content.hazards.radiation.pointsource.PointSourceUtil;
@@ -11,19 +12,25 @@ import com.rae.crowns.content.thermodynamics.IHaveTemperature;
 import com.rae.crowns.init.data.PacketInit;
 import com.rae.crowns.init.misc.FluidInit;
 import com.rae.crowns.init.misc.NucleusInit;
+import com.rae.crowns.init.misc.ParticleInit;
 import com.rae.crowns.init.misc.TagsInit;
+import com.rae.formicapi.FormicApiLang;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.PlayerList;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -147,19 +154,25 @@ public class AssemblyBlockEntity extends SmartBlockEntity implements IHaveTemper
             Nucleus nucleus = e.getKey();
             Float mol = e.getValue();
 
-            float volume = (1 * (1 + CROWNSConfigs.SERVER.nuclear.negativeThermalCoef.getF() * (temperature - 300))); // How much the thingamajig "expands"
+            float volume = 1f; //(1 * (1 + CROWNSConfigs.SERVER.nuclear.negativeThermalCoef.getF() * (temperature - 300))); // How much the thingamajig "expands"
+            // Changed to doppler broadening
 
-            Nucleus.NuclearTransformationResult fast_result = nucleus.fission(receivingFastFlux, mol, volume, 0.25f, true); // Fast spectrum
-            Nucleus.NuclearTransformationResult thermal_result = nucleus.fission(receivingSlowFlux, mol, volume, 0.25f, false); // Thermal spectrum
+            double factor = Math.min(Math.sqrt(temperature) / 500, 1);
+            float effectiveSlowFlux = (float) (1 - factor) * receivingSlowFlux;
+            float effectiveFastFlux = (float) (receivingFastFlux + factor * receivingSlowFlux);
+
+            Nucleus.NuclearTransformationResult fast_result = nucleus.fission(effectiveFastFlux, mol, volume, 0.25f, true); // Fast spectrum
+            Nucleus.NuclearTransformationResult thermal_result = nucleus.fission(effectiveSlowFlux, mol, volume, 0.25f, false); // Thermal spectrum
             Nucleus.NuclearTransformationResult decay_result = nucleus.decay(1f, mol);
 
             outgoingFlux += fast_result.neutron_yielded() + thermal_result.neutron_yielded() + decay_result.neutron_yielded();
 
             double E = fast_result.energy_yielded() + thermal_result.energy_yielded() + decay_result.energy_yielded();
-
+            //WARNING the energy yielded need to be multiplied by the coefficient in the constants
             temperatureChange(E);
+            //TODO only explode if config activated
             if (temperature > 3422) meltdown(getBlockPos()); // Melting point of tungsten as placeholder
-            if (E > 1e14) standardExplosion(getBlockPos(), 20);
+            if (E > 1e14) standardExplosion(getBlockPos(), 10);
 
             // Since it can return null elements, we should check for null before adding
             HashMap<Nucleus, Float> nullableElements = new HashMap<>();
@@ -222,7 +235,11 @@ public class AssemblyBlockEntity extends SmartBlockEntity implements IHaveTemper
         receivingFastFlux = 0; receivingSlowFlux = 0;
 
         float temperatureDifference = temperature - 300;
-        temperature -= temperatureDifference * CROWNSConfigs.SERVER.nuclear.heatLossCoef.getF();
+        temperature -= temperatureDifference * CROWNSConfigs.SERVER.nuclear.heatLossCoef.getF();// HELLL NO
+        //TODO freeze simulation if the temperature is not ticking
+        //TODO right now the simulation can say if in the last ticking the chunk section got an update.
+        // IF it's frozen due to server overload it will still say that it's ticking even if it's blocked
+        // so need to give the last gametick the section got updated and freeze if it's
 
         if (Float.isNaN(temperature)) {
             temperature = 300;
@@ -233,6 +250,7 @@ public class AssemblyBlockEntity extends SmartBlockEntity implements IHaveTemper
     public void lazyTick() {
         super.lazyTick();
         BlockPos origin = getBlockPos();
+        //TODO we could go even slower than that. every 2 seconds should be fast enough
         assemblies = PointSourceUtil.findAssemblies(origin, level, CROWNSConfigs.SERVER.nuclear.radiationRange.get().intValue());
     }
 
@@ -309,7 +327,7 @@ public class AssemblyBlockEntity extends SmartBlockEntity implements IHaveTemper
         tooltip.add(Component.literal(""));
 
         tooltip.add(Component.literal("Temperature:").withStyle(ChatFormatting.DARK_RED)
-                .append(Component.literal(String.format(" : %.2f°C", temperature - 273.15)).withStyle(ChatFormatting.DARK_RED)));
+                .append(FormicApiLang.formatTemperature(temperature).component()).withStyle(ChatFormatting.DARK_RED));
 
         tooltip.add(Component.literal(""));
 
@@ -320,6 +338,8 @@ public class AssemblyBlockEntity extends SmartBlockEntity implements IHaveTemper
 
         tooltip.add(Component.literal("Outgoing flux:").withStyle(ChatFormatting.AQUA)
                 .append(Component.literal(String.format(" : %.5f/s", outgoingFlux * 20)).withStyle(ChatFormatting.AQUA)));
+        tooltip.add(Component.literal("Doppler broadening:").withStyle(ChatFormatting.DARK_RED)
+                .append(Component.literal(String.format(" : %.3f%%", Math.min(Math.sqrt(temperature) / 500, 1))).withStyle(ChatFormatting.DARK_RED)));
         tooltip.add(Component.literal(""));
 
         tooltip.add(Component.literal("Composition:").setStyle(Style.EMPTY.withColor(ChatFormatting.GOLD)));
@@ -327,7 +347,7 @@ public class AssemblyBlockEntity extends SmartBlockEntity implements IHaveTemper
         inventory.forEach((nucleus, mol) -> {
             if (!whitelist.contains(nucleus.getId())) return;
 
-            String nucleusName = CROWNSLang.readableNucleus(nucleus).string();
+            String nucleusName = CROWNSLang.nucleus(nucleus).string();
             double mass = nucleus.moleToMass(mol);
             double concentration = mass / 3000;
 
@@ -360,6 +380,21 @@ public class AssemblyBlockEntity extends SmartBlockEntity implements IHaveTemper
                     inventory.put(nucleus, (float) mol);
                 }
             }
+
+            //add legacy composition
+
+            for (ResourceLocation resourceLocation : IAmFissileMaterial.fissileCrossSection.keySet()) {
+                if (composition.contains(resourceLocation.toString())) {
+                    double concentration = composition.getDouble(resourceLocation.toString());
+                    if (resourceLocation.equals(CROWNS.resource("u235"))) {
+                        inventory.put(NucleusInit.U235, NucleusInit.U235.massToMole((float) (concentration*600_000)));
+                    } else if (resourceLocation.equals(CROWNS.resource("u238"))) {
+                        inventory.put(NucleusInit.U238,  NucleusInit.U238.massToMole((float) (concentration*600_000)));
+
+                    }
+                }
+            }
+
         }
     }
 
@@ -389,7 +424,7 @@ public class AssemblyBlockEntity extends SmartBlockEntity implements IHaveTemper
     }
 
     private void temperatureChange(double Q) {
-        float coEf = 0.5f * 1e4f; // Change this for how much you want the temperature increase to slow down
+        float coEf = 0.75f * 1e4f; // Change this for how much you want the temperature increase to slow down
         temperature += (float) Q / (C * coEf);
     }
 
